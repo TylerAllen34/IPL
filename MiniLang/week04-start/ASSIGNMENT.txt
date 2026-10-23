@@ -1,0 +1,260 @@
+WEEK 04 — Declare names and manage block scopes
+
+EXERCISE FOCUS
+We will connect declaration identity, initialization order and block scope.
+You will implement one coherent resolver protocol using the supplied AST.
+
+GOAL AND LECTURE CONNECTION
+Give each declaration a distinct identity in its current scope, reject
+same-scope duplicates, and permit reads only after its initializer resolves.
+Enter and leave one name table for each nested block. Explain shadowing
+without confusing compiler metadata with runtime values.
+Work in the project folder you received. Everything needed is included here.
+When the solution is provided, use its READ_ME.txt to compare your work.
+
+STARTING DEMONSTRATION — WORKS BEFORE THE EDIT
+inputs/starting_point.mini contains this line and a final newline:
+    fun main() { print 10; }
+From the package root, run your existing built executable:
+    ./build/minic run inputs/starting_point.mini
+Exact stdout is 10 followed by a newline:
+    10
+stderr is empty. Exit status is 0 before and after the edit.
+A literal requires no declaration or nested block. Main's initial scope,
+printing, C++ generation and native execution are already connected.
+Replace ./build/minic with your actual IDE/build executable path if necessary.
+
+STARTING POINT: PROVIDED INFRASTRUCTURE AND LIMITS
+Identifier scanning, variable/assignment/block parsing, AST nodes and
+formatting, C++ generation and runtime storage are supplied. The resolver's
+run(), beginScope(), endScope() and ordered resolveStatements() also work.
+The name-use and assignment visitors are provided; literals need no binding.
+You complete declare(), define(), and the VarStatement and BlockStatement
+branch bodies in resolveStatement(). Their placeholders stop resolution.
+Each Binding has an id and a defined flag. scopes_ is a vector of maps;
+scopes_.back() is current. next_symbol_ supplies the next declaration ID.
+Lookup deliberately searches ONLY the current scope, even in the solution.
+An inner declaration may shadow an outer name, but an outer-only name is
+unavailable inside a nested block. Keep this temporary boundary intact.
+Operators, branches, loops and general calls are absent. Lowering is identity.
+The shared --help describes final Mini, not this exercise's subset.
+
+YOUR C++ TASK — FOUR CONNECTED PARTS IN src/resolver.cpp
+Keep the existing signatures and node-dispatch conditions. Replace the TODO
+bodies below; remove placeholder throws and both (void) placeholder lines.
+Do not change resolveName(), the AST, parser, code generator or runtime.
+
+1. Resolver::declare(VarStatement &variable)
+   Take a mutable reference to the current scope and copy next_symbol_ as id.
+   Attempt to insert variable.name with Binding{id, false} into that map.
+   If insertion fails, throw a resolve CompileError with source_.name(),
+   variable.name_span and: duplicate variable '<name>' in the same scope
+   Substitute the actual name. Do not search outer maps for duplicates.
+   After successful insertion, set variable.resolved_id to id, then increment
+   next_symbol_. Do not reset the counter on block entry or allocate IDs for
+   uses. Each distinct declaration must retain a distinct identity.
+
+2. Resolver::define(const std::string &name)
+   Find the existing name in the current map and set its defined flag to true.
+   Use the binding inserted by declare(); do not create another binding or ID.
+
+3. VarStatement branch in Resolver::resolveStatement(Statement &statement)
+   Call declare(*variable), resolveExpression(variable->initializer), then
+   define(variable->name), in that order; return from the handled branch.
+   If the initializer fails, define() is never reached. Declaring first lets
+   the supplied lookup reject a read of the new name in its own initializer.
+
+4. BlockStatement branch in Resolver::resolveStatement(Statement &statement)
+   Call beginScope(), resolveStatements(block->statements), then endScope();
+   return from the handled branch. Enter before the first child and leave
+   only after successful ordered traversal. Nested blocks reuse this visitor.
+
+One block means one map, not one map per statement. Reusing the parent map
+would confuse shadowing with duplication; forgetting to pop leaks names.
+On an error compilation stops and the resolver is discarded. Error recovery
+and a persistent symbol service are outside this exercise.
+
+BUILD AND CHECK THE RIGHT PROJECT
+Use your existing course/IDE build. In commands below, minic means the
+executable from your rebuilt project, for example ./build/minic. Replace
+minic with your actual IDE/build path; it need not be on PATH.
+Commands are run from this package root; inputs/ contains the supplied cases.
+Rebuild after C++ edits: cmake --build <your-build-directory> --config Debug
+Use your actual build directory or IDE Build. Stop if the build fails.
+Successful check has empty stdout/stderr and exit 0. run also emits C++,
+invokes the host compiler and executes the generated program. AST output is
+not execution. Changing only a .mini file does not require rebuilding minic.
+
+POSITIVE ACCEPTANCE
+inputs/acceptance.mini contains:
+    fun main() {
+      var x = 10;
+      { var x = 20; print x; }
+      print x;
+    }
+Before and after editing, use your rebuilt executable:
+    minic ast inputs/acceptance.mini
+    minic check inputs/acceptance.mini
+    minic run inputs/acceptance.mini
+ast succeeds in both versions, with empty stderr and exit 0. Exact stdout:
+    (program
+      (fun main ()
+        (var x (number 10))
+        (block
+          (var x (number 20))
+          (print (variable x))
+        )
+        (print (variable x))
+      )
+    )
+Start check and run: exit 1; empty stdout; stderr contains:
+    resolve: TODO WEEK04: resolve variable declaration
+Completed check: exit 0, empty stdout and stderr. Completed run: exit 0; empty stderr; exact stdout:
+    20
+    10
+The first start failure is the outer declaration, before the nested block.
+The completed outer and inner declarations have IDs 0 and 1. The inner print
+uses ID 1; after the block is popped the final print uses ID 0. AST text does
+not show these annotations; cpp exposes their distinct generated names.
+
+MANDATORY EDGE CASES — INPUTS AND EXPECTED RESULTS
+Each source below is the complete bundled input, with a final newline.
+Errors include the source path/location before the listed resolve message.
+
+1. Recursive entry and restoration: inputs/edge_nested.mini
+    fun main() { var x = 10; { var x = 2; { var x = 3; print x; } print x; } print x; }
+   Run: minic run inputs/edge_nested.mini
+   Start: exit 1; empty stdout; stderr contains:
+    resolve: TODO WEEK04: resolve variable declaration
+   Completed: exit 0; empty stderr; exact stdout:
+    3
+    2
+    10
+   Each nested block restores the preceding map after it ends.
+
+2. Sibling name reuse: inputs/edge_siblings.mini
+    fun main() { { var x = 1; print x; } { var x = 2; print x; } }
+   Run: minic run inputs/edge_siblings.mini
+   Start: exit 1; empty stdout; stderr contains:
+    resolve: TODO WEEK04: implement block scope
+   Completed: exit 0; empty stderr; exact stdout:
+    1
+    2
+   The second block may reuse x because the first map has been removed.
+   Declaration IDs must still remain distinct.
+
+3. No leaking declaration: inputs/edge_leak.mini
+    fun main() { { var y = 1; } print y; }
+   Run: minic check inputs/edge_leak.mini
+   Start: exit 1; empty stdout; stderr contains:
+    resolve: TODO WEEK04: implement block scope
+   Completed: exit 1; empty stdout; stderr contains:
+    resolve: unknown variable 'y' in current scope
+   Popping a block removes its names from active lookup.
+
+4. Duplicate in one block: inputs/edge_duplicate.mini
+    fun main() { { var y = 1; var y = 2; } }
+   Run: minic check inputs/edge_duplicate.mini
+   Start: exit 1; empty stdout; stderr contains:
+    resolve: TODO WEEK04: implement block scope
+   Completed: exit 1; empty stdout; stderr contains:
+    resolve: duplicate variable 'y' in the same scope
+   All statements of the block share one map. Creating a scope for each
+   statement would incorrectly hide this duplicate.
+
+5. Current-scope-only boundary: inputs/edge_outer_access.mini
+    fun main() { var x = 10; { x = 30; } print x; }
+   Run: minic check inputs/edge_outer_access.mini
+   Start: exit 1; empty stdout; stderr contains:
+    resolve: TODO WEEK04: resolve variable declaration
+   Completed: exit 1; empty stdout; stderr contains:
+    resolve: unknown variable 'x' in current scope
+   This rejection remains correct in this exercise. Do not add outward
+   lookup.
+
+6. Declare before resolving the initializer: inputs/edge_self_initializer.mini
+    fun main() { { var x = x; } }
+   Run: minic check inputs/edge_self_initializer.mini
+   Start: exit 1; empty stdout; stderr contains:
+    resolve: TODO WEEK04: implement block scope
+   Completed: exit 1; empty stdout; stderr contains:
+    resolve: cannot read variable 'x' in its own initializer
+   The binding is present but undefined while its initializer is resolved.
+   Only a successful initializer permits define().
+
+7. A block with no declarations: inputs/edge_plain_block.mini
+    fun main() { { print 7; } print 10; }
+   Run: minic run inputs/edge_plain_block.mini
+   Start: exit 1; empty stdout; stderr contains:
+    resolve: TODO WEEK04: implement block scope
+   Completed: exit 0; empty stderr; exact stdout:
+    7
+    10
+   This isolates begin/visit/end from the declaration algorithm and guards
+   ordered execution.
+
+8. Two declarations in one scope: inputs/edge_distinct_ids.mini
+    fun main() { var first = 1; var second = 2; print first; print second; }
+   Run: minic run inputs/edge_distinct_ids.mini
+   Start: exit 1; empty stdout; stderr contains:
+    resolve: TODO WEEK04: resolve variable declaration
+   Completed: exit 0; empty stderr; exact stdout:
+    1
+    2
+   Run: minic cpp inputs/edge_distinct_ids.mini
+   Start: exit 1; empty stdout; stderr contains:
+    resolve: TODO WEEK04: resolve variable declaration
+   Completed: exit 0; empty stderr; generated C++ contains mini_variable_0, mini_variable_1.
+   Each successful declaration consumes one fresh ID. Code generation
+   exposes mini_variable_0 and mini_variable_1; AST text does not show IDs.
+
+9. Definition permits later use: inputs/edge_local_assignment.mini
+    fun main() { var x = 1; x = 2; print x; }
+   Run: minic run inputs/edge_local_assignment.mini
+   Start: exit 1; empty stdout; stderr contains:
+    resolve: TODO WEEK04: resolve variable declaration
+   Completed: exit 0; empty stderr; exact stdout:
+    2
+   The supplied assignment visitor reuses the declared ID. It must not see
+   the variable as still undefined.
+
+10. Duplicate in the initial scope: inputs/edge_duplicate_main.mini
+    fun main() { var x = 1; var x = 2; }
+   Run: minic check inputs/edge_duplicate_main.mini
+   Start: exit 1; empty stdout; stderr contains:
+    resolve: TODO WEEK04: resolve variable declaration
+   Completed: exit 1; empty stdout; stderr contains:
+    resolve: duplicate variable 'x' in the same scope
+   The same declaration rule applies in main and nested blocks.
+
+REPEATABLE ACCEPTANCE CHECKS
+Before editing, from this package root:
+    python3 CHECK_PROJECT.py --mode start --compiler ./build/minic
+After editing and rebuilding your own project:
+    python3 CHECK_PROJECT.py --mode solution --compiler ./build/minic
+Use your actual executable path. Python 3.8+ is only for this optional runner;
+all manual minic commands above remain available without Python.
+The runner reads checks/CASES.json and the bundled inputs. Its 15 checks compare
+stdout, stderr and exit status in the selected mode. PASS in start mode
+includes expected TODO errors; it does not certify a completed exercise.
+Solution mode requires both successful programs and the stated rejections.
+Use the cases to find mistakes, then explain why each result is required.
+Then try a small example of your own and predict the result before running it.
+
+DONE CHECKLIST
+[ ] Only declare(), define() and the two stated branch bodies were completed.
+[ ] A successful declaration inserts an undefined binding, records one fresh
+    ID, resolves its initializer, then becomes defined.
+[ ] Duplicate declarations are rejected only within the current map.
+[ ] Every successful block enters, visits in order, leaves and returns.
+[ ] The literal baseline prints 10; acceptance prints 20 then 10.
+[ ] Distinct IDs, nested restoration, siblings, leakage and self-reads are checked.
+[ ] Outer-only access remains an error; all 15 solution-mode checks pass.
+[ ] You distinguish compile-time binding identity from runtime values.
+
+WHAT WE WILL DO NEXT
+Keep the declaration and block protocol. In Stage 05, we will search from
+inner to outer scopes and connect that search to expression reads and
+assignment targets. That start retains your completed parts but has new TODOs
+in lookup, expression traversal and assignment binding. Even a local read and
+parenthesized literal will wait for that work; begin with its bare literal demo.

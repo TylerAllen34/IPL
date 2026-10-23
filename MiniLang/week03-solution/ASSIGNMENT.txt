@@ -1,0 +1,178 @@
+WEEK 03 — Whole names, keywords and the first complete Mini program
+
+EXERCISE FOCUS
+In Stage 03, we will learn to use the project, scan complete names and run
+our first Mini program.
+
+GOAL AND LECTURE CONNECTION
+Read a complete identifier-shaped word and classify it as a keyword or name.
+Connect characters, lexemes, token kinds and source positions to the parser.
+Explain why recognizing a token does not implement the corresponding syntax.
+Work in the project folder you received and complete the TODO described
+below. Everything you need for this exercise is included here. When the
+solution is provided, use its READ_ME.txt to compare and explain your work.
+
+STARTING DEMONSTRATION — WORKS BEFORE THE EDIT
+The supplied inputs/starting_point.mini contains exactly 123 and a newline:
+    123
+From the package root, using your existing built executable, run:
+    ./build/minic tokens inputs/starting_point.mini
+Exact stdout:
+    NUMBER 1:1 "123" = 123
+    EOF 2:1 ""
+stderr is empty. Exit status is 0, both before and after the edit.
+This is a lexer fragment, not a complete Mini program: use tokens, not run.
+Replace ./build/minic with your actual executable path if your IDE uses another.
+
+STARTING POINT: PROVIDED INFRASTRUCTURE AND LIMITS
+Your project already has CLI commands, source loading, token data, ASCII
+helpers, keyword lookup, number/string scanning, comments and punctuation.
+It also includes the parser, AST, generator, host compiler wrapper and runtime.
+Lowering is an identity pass; the resolver has no binding work in this stage.
+The completed subset accepts one parameterless fun main(), print, number/
+string/Boolean/nil literals, parentheses and expression statements.
+It has no variables, arithmetic/logical operators, nested block statements,
+branches, loops, general function calls or return statements.
+The shared --help describes final Mini; it is not this stage's feature list.
+
+YOUR C++ TASK
+File: src/lexer.cpp
+Function: Lexer::identifier(), the body marked TODO WEEK03.
+Replace the placeholder comment and throw; keep the surrounding project.
+
+1. Read scanToken() first. It has already consumed the first ASCII letter or
+   underscore. start_ marks that character; current_ is the first unread one.
+2. Inspect continuation characters with peek(). Accept ASCII letters, digits
+   and underscores through the supplied isAsciiAlphaNumeric helper.
+3. Consume accepted continuations with advance(). Leave the first nonmatching
+   character unread, and do not advance beyond the end of the source.
+4. Obtain the whole text from contents_: start start_, length current_ - start_.
+   Include the first character that scanToken() already consumed.
+5. Classify that complete text with identifierKind(); call addToken() once.
+   The helper stores the lexeme and source span.
+
+The result is the appended token and cursor state, not a return value.
+[start_, current_) must cover exactly the consumed name. peek() supplies a
+nonmatching sentinel at EOF; Lexer::run() adds the EOF token itself.
+Do not add a keyword table, parser rule, AST node or runtime operation.
+
+BUILD AND CHECK THE RIGHT PROJECT
+Use your existing course/IDE build. In commands below, minic means the
+executable from your rebuilt project, for example ./build/minic. Replace
+minic with your actual IDE/build path; it need not be on PATH.
+Commands are run from this package root; inputs/ contains the supplied cases.
+The source samples below are their actual contents. Preserve the final LF,
+except for edge_eof.mini, which intentionally ends immediately after _End9.
+Rebuild after C++ edits: cmake --build <your-build-directory> --config Debug
+Use your actual build directory or IDE Build. Stop if the build fails.
+Changing a .mini input alone does not require rebuilding minic.
+
+POSITIVE ACCEPTANCE — ONE PROGRAM THROUGH THE SUPPLIED PIPELINE
+inputs/acceptance.mini contains this one line followed by a newline:
+    fun main() { print 42; print "Mini"; }
+Run the untouched start:
+    minic run inputs/acceptance.mini
+stdout is empty; exit status is 1. stderr reports a lex error at 1:1:
+    lex: TODO WEEK03: implement identifier scanning
+The diagnostic includes the input path before this phase/message.
+The parser has not processed the input: even fun reaches identifier().
+After implementing the task and rebuilding, run:
+    minic tokens inputs/acceptance.mini
+    minic ast inputs/acceptance.mini
+    minic check inputs/acceptance.mini
+    minic run inputs/acceptance.mini
+All four commands return 0 with empty stderr. check has empty stdout.
+run has exactly these two stdout lines, each ending in a newline:
+    42
+    Mini
+The exact ast result is:
+    (program
+      (fun main ()
+        (print (number 42))
+        (print (string "Mini"))
+      )
+    )
+Your change enables the supplied later phases; it does not implement them.
+
+MANDATORY EDGE CASES — CONTENTS AND EXPECTED RESULTS
+Run each scanner case with minic tokens inputs/<filename>.
+Before the edit they all exit 1 with the identifier TODO and empty stdout.
+After the edit they return 0, have empty stderr and produce these tokens.
+
+1. edge_keywords.mini, with a final newline:
+    for for2 _x3
+   Exact stdout:
+    FOR 1:1 "for"
+    IDENTIFIER 1:5 "for2"
+    IDENTIFIER 1:10 "_x3"
+    EOF 2:1 ""
+   for2 must not split into FOR and NUMBER. This is not a runnable for loop.
+
+2. edge_eof.mini, WITHOUT a final newline or trailing space:
+    print Print print2 _ x_3 _End9
+   Exact stdout:
+    PRINT 1:1 "print"
+    IDENTIFIER 1:7 "Print"
+    IDENTIFIER 1:13 "print2"
+    IDENTIFIER 1:20 "_"
+    IDENTIFIER 1:22 "x_3"
+    IDENTIFIER 1:26 "_End9"
+    EOF 1:31 ""
+   Only lowercase print is the keyword; the final name must survive EOF.
+
+3. edge_delimiter.mini, with a final newline:
+    for2;_x
+   Exact stdout:
+    IDENTIFIER 1:1 "for2"
+    SEMICOLON 1:5 ";"
+    IDENTIFIER 1:6 "_x"
+    EOF 2:1 ""
+   The identifier scanner must leave the semicolon for scanToken().
+
+4. edge_digit_prefix.mini, with a final newline:
+    9name
+   Exact stdout:
+    NUMBER 1:1 "9" = 9
+    IDENTIFIER 1:2 "name"
+    EOF 2:1 ""
+   Digits may continue a name but do not start an identifier here.
+
+5. edge_unsupported_addition.mini, with a final newline:
+    fun main() { print 1 + 2; }
+   Run: minic tokens inputs/edge_unsupported_addition.mini
+        minic check inputs/edge_unsupported_addition.mini
+   Start: both stop at the lexical TODO, exit 1, stdout empty.
+   Completed: tokens succeeds, including PLUS; check still exits 1 with
+   empty stdout and parse: expected ';' after print value on stderr.
+   The path/location precede the error. Do not add addition to pass this case.
+
+REPEATABLE ACCEPTANCE CHECKS
+Before editing, from this package root:
+    python3 CHECK_PROJECT.py --mode start --compiler ./build/minic
+After editing and rebuilding your own project:
+    python3 CHECK_PROJECT.py --mode solution --compiler ./build/minic
+Use your actual executable path. Python 3.8+ is only for this optional runner;
+the manual minic commands above remain available without Python.
+The runner reads checks/CASES.json and the bundled inputs. Its 10 checks compare
+stdout, stderr and exit status with the expectations for the selected mode.
+PASS in start mode includes correctly observed TODO errors; it does not mean
+that the exercise has been solved. Solution mode requires the positive program
+and the semantic edge cases, including the deliberately rejected addition.
+Use these cases to find mistakes, then explain the cursor and token rules
+in your own words. Try one additional name and predict its tokens before running it.
+
+DONE CHECKLIST
+[ ] Only identifier() was implemented; the placeholder throw is gone.
+[ ] Full names, keyword boundaries, case, underscores and immediate EOF work.
+[ ] for2; leaves the semicolon unread; a digit does not start a name.
+[ ] The original number baseline remains valid.
+[ ] Rebuilt hello has the shown AST, silent check and stdout 42 / Mini.
+[ ] All 10 checks pass in solution mode, including the unsupported feature.
+[ ] You distinguish tokenization, tree construction and native execution.
+
+WHAT WE WILL DO NEXT
+Keep your completed scanner and its examples. In Stage 04, we will work on
+variable declarations and block scopes. I will provide the parser, AST and
+C++ generation. You will assign declaration IDs, record when a variable is
+ready to use, and visit the statements inside each block. Finish the
+identifier task in this folder before starting that project.

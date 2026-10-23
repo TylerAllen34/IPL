@@ -1,0 +1,249 @@
+{
+  "schema_version": 1,
+  "week": 4,
+  "acceptance_description": "Declarations enter the current scope with distinct IDs and an undefined flag, then become defined only after their initializer resolves. Duplicates are rejected in that map. A block enters one scope, resolves its statements in order, leaves and returns. Current-only lookup remains intentional. Literal execution, IDs, assignment, nested restoration, sibling reuse, leakage and own-initializer checks let you check each part of your implementation. Then try a block of your own and trace its declarations.",
+  "fixture_sha256": {
+    "starting_point.mini": "d7f5740a27b138d62e74b41789d9675a990d566e6c6954af8bd6551e03f8c630",
+    "acceptance.mini": "5bb7d7df7fe0b42180343365117513ad9f518cc5f7b9295b5686d64a520b8be1",
+    "edge_nested.mini": "a2f8b27f686e89edf0d644783fce1e585e30221e3cea2bd32013826336af5bf6",
+    "edge_siblings.mini": "beeb23015fd119bc60936af3eda7e06de71d4b465ca71330200edb8583ca9880",
+    "edge_leak.mini": "b1341e82f00c3401b24cc8ef4612fd827680d0cdcc701d6191c4c9c19248090a",
+    "edge_duplicate.mini": "3684845393114279cf5e757af408e5bf96765082b1a9d482b31e61ec3ff07ecf",
+    "edge_outer_access.mini": "72832f28414911e04f4dbd252ee30207b8f9d6d565a03ab5249952ca777641ee",
+    "edge_self_initializer.mini": "1d59d6a028247747863c0e5d8e200a980ced335405498a32e93a9a6c6cc1d799",
+    "edge_plain_block.mini": "87e6fcbbf74a3fd000baeda5113794feb568a9af084b7d4f45ce57bc450ce1af",
+    "edge_distinct_ids.mini": "dd49bc65448158e313b4cf86dc679079066e716c2b850cb78eb6fa888906de22",
+    "edge_local_assignment.mini": "2a6554ccf1e16b46cc3746c68a23943264cad45c5616601da92360e65d1dc4af",
+    "edge_duplicate_main.mini": "b43090b571672bef521055a9d09c7695b1b4df201572f718be28330b6f29bf6c"
+  },
+  "checks": [
+    {
+      "id": "baseline",
+      "file": "starting_point.mini",
+      "command": "run",
+      "start": {
+        "exit": 0,
+        "stdout": "10\n",
+        "stderr": ""
+      },
+      "solution": {
+        "exit": 0,
+        "stdout": "10\n",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "acceptance-ast-already-parses",
+      "file": "acceptance.mini",
+      "command": "ast",
+      "start": {
+        "exit": 0,
+        "stdout": "(program\n  (fun main ()\n    (var x (number 10))\n    (block\n      (var x (number 20))\n      (print (variable x))\n    )\n    (print (variable x))\n  )\n)\n",
+        "stderr": ""
+      },
+      "solution": {
+        "exit": 0,
+        "stdout": "(program\n  (fun main ()\n    (var x (number 10))\n    (block\n      (var x (number 20))\n      (print (variable x))\n    )\n    (print (variable x))\n  )\n)\n",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "acceptance-check",
+      "file": "acceptance.mini",
+      "command": "check",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "resolve: TODO WEEK04: resolve variable declaration"
+      },
+      "solution": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "acceptance-run",
+      "file": "acceptance.mini",
+      "command": "run",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "resolve: TODO WEEK04: resolve variable declaration"
+      },
+      "solution": {
+        "exit": 0,
+        "stdout": "20\n10\n",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "nested-scope-restoration",
+      "file": "edge_nested.mini",
+      "command": "run",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "resolve: TODO WEEK04: resolve variable declaration"
+      },
+      "solution": {
+        "exit": 0,
+        "stdout": "3\n2\n10\n",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "sibling-name-reuse",
+      "file": "edge_siblings.mini",
+      "command": "run",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "resolve: TODO WEEK04: implement block scope"
+      },
+      "solution": {
+        "exit": 0,
+        "stdout": "1\n2\n",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "block-local-does-not-leak",
+      "file": "edge_leak.mini",
+      "command": "check",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "resolve: TODO WEEK04: implement block scope"
+      },
+      "solution": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "resolve: unknown variable 'y' in current scope"
+      }
+    },
+    {
+      "id": "duplicate-in-same-block",
+      "file": "edge_duplicate.mini",
+      "command": "check",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "resolve: TODO WEEK04: implement block scope"
+      },
+      "solution": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "resolve: duplicate variable 'y' in the same scope"
+      }
+    },
+    {
+      "id": "current-scope-only-boundary",
+      "file": "edge_outer_access.mini",
+      "command": "check",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "resolve: TODO WEEK04: resolve variable declaration"
+      },
+      "solution": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "resolve: unknown variable 'x' in current scope"
+      }
+    },
+    {
+      "id": "own-initializer-preserved",
+      "file": "edge_self_initializer.mini",
+      "command": "check",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "resolve: TODO WEEK04: implement block scope"
+      },
+      "solution": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "resolve: cannot read variable 'x' in its own initializer"
+      }
+    },
+    {
+      "id": "literal-block-traversal",
+      "file": "edge_plain_block.mini",
+      "command": "run",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "resolve: TODO WEEK04: implement block scope"
+      },
+      "solution": {
+        "exit": 0,
+        "stdout": "7\n10\n",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "distinct-declarations-run",
+      "file": "edge_distinct_ids.mini",
+      "command": "run",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "resolve: TODO WEEK04: resolve variable declaration"
+      },
+      "solution": {
+        "exit": 0,
+        "stdout": "1\n2\n",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "distinct-declarations-codegen",
+      "file": "edge_distinct_ids.mini",
+      "command": "cpp",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "resolve: TODO WEEK04: resolve variable declaration"
+      },
+      "solution": {
+        "exit": 0,
+        "stdout_contains": [
+          "mini_variable_0",
+          "mini_variable_1"
+        ],
+        "stderr": ""
+      }
+    },
+    {
+      "id": "defined-local-assignment",
+      "file": "edge_local_assignment.mini",
+      "command": "run",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "resolve: TODO WEEK04: resolve variable declaration"
+      },
+      "solution": {
+        "exit": 0,
+        "stdout": "2\n",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "duplicate-in-main",
+      "file": "edge_duplicate_main.mini",
+      "command": "check",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "resolve: TODO WEEK04: resolve variable declaration"
+      },
+      "solution": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "resolve: duplicate variable 'x' in the same scope"
+      }
+    }
+  ]
+}

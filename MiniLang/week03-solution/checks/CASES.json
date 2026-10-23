@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "week": 3,
+  "acceptance_description": "Whole ASCII names are scanned once, full lexemes determine keywords, delimiters and immediate EOF are preserved, and supplied hello reaches AST/check/native execution. Unsupported arithmetic remains a parse error. After these checks pass in solution mode, try another identifier and explain how its token is classified.",
+  "fixture_sha256": {
+    "starting_point.mini": "181210f8f9c779c26da1d9b2075bde0127302ee0e3fca38c9a83f5b1dd8e5d3b",
+    "acceptance.mini": "251100aab8deb68b9d8db116e6670aa8c614fb41dab3875dd5aab9f8c9e73e7d",
+    "edge_keywords.mini": "e6f06812b42197bdbb4b4be4276ac41f26f160768a35dff6114a79c5502838f7",
+    "edge_eof.mini": "f16be94a328768a53471ffe64bc20a64a1ddb47a0d86ba9f4ddc0dd429adb121",
+    "edge_delimiter.mini": "26c3729363dd3b60eb75ce5e5144fa6b8874ffda9661467102bd93d8366e4c27",
+    "edge_digit_prefix.mini": "266b673fe055000e143513fbb8fca16d134fa688664f73308f85a2e7119fb8c0",
+    "edge_unsupported_addition.mini": "415aa81d78f7fb501550cc9d015e9c8adfc00569ecb463c02086f6498b9a9422"
+  },
+  "checks": [
+    {
+      "id": "baseline",
+      "file": "starting_point.mini",
+      "command": "tokens",
+      "start": {
+        "exit": 0,
+        "stdout": "NUMBER 1:1 \"123\" = 123\nEOF 2:1 \"\"\n",
+        "stderr": ""
+      },
+      "solution": {
+        "exit": 0,
+        "stdout": "NUMBER 1:1 \"123\" = 123\nEOF 2:1 \"\"\n",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "whole-word-keywords",
+      "file": "edge_keywords.mini",
+      "command": "tokens",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "lex: TODO WEEK03: implement identifier scanning"
+      },
+      "solution": {
+        "exit": 0,
+        "stdout": "FOR 1:1 \"for\"\nIDENTIFIER 1:5 \"for2\"\nIDENTIFIER 1:10 \"_x3\"\nEOF 2:1 \"\"\n",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "case-underscore-immediate-eof",
+      "file": "edge_eof.mini",
+      "command": "tokens",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "lex: TODO WEEK03: implement identifier scanning"
+      },
+      "solution": {
+        "exit": 0,
+        "stdout": "PRINT 1:1 \"print\"\nIDENTIFIER 1:7 \"Print\"\nIDENTIFIER 1:13 \"print2\"\nIDENTIFIER 1:20 \"_\"\nIDENTIFIER 1:22 \"x_3\"\nIDENTIFIER 1:26 \"_End9\"\nEOF 1:31 \"\"\n",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "leave-delimiter-unread",
+      "file": "edge_delimiter.mini",
+      "command": "tokens",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "lex: TODO WEEK03: implement identifier scanning"
+      },
+      "solution": {
+        "exit": 0,
+        "stdout": "IDENTIFIER 1:1 \"for2\"\nSEMICOLON 1:5 \";\"\nIDENTIFIER 1:6 \"_x\"\nEOF 2:1 \"\"\n",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "digit-is-not-name-start",
+      "file": "edge_digit_prefix.mini",
+      "command": "tokens",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "lex: TODO WEEK03: implement identifier scanning"
+      },
+      "solution": {
+        "exit": 0,
+        "stdout": "NUMBER 1:1 \"9\" = 9\nIDENTIFIER 1:2 \"name\"\nEOF 2:1 \"\"\n",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "acceptance-ast",
+      "file": "acceptance.mini",
+      "command": "ast",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "lex: TODO WEEK03: implement identifier scanning"
+      },
+      "solution": {
+        "exit": 0,
+        "stdout": "(program\n  (fun main ()\n    (print (number 42))\n    (print (string \"Mini\"))\n  )\n)\n",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "acceptance-check",
+      "file": "acceptance.mini",
+      "command": "check",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "lex: TODO WEEK03: implement identifier scanning"
+      },
+      "solution": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "acceptance-run",
+      "file": "acceptance.mini",
+      "command": "run",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "lex: TODO WEEK03: implement identifier scanning"
+      },
+      "solution": {
+        "exit": 0,
+        "stdout": "42\nMini\n",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "unsupported-addition-scans",
+      "file": "edge_unsupported_addition.mini",
+      "command": "tokens",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "lex: TODO WEEK03: implement identifier scanning"
+      },
+      "solution": {
+        "exit": 0,
+        "stdout": "FUN 1:1 \"fun\"\nIDENTIFIER 1:5 \"main\"\nLEFT_PAREN 1:9 \"(\"\nRIGHT_PAREN 1:10 \")\"\nLEFT_BRACE 1:12 \"{\"\nPRINT 1:14 \"print\"\nNUMBER 1:20 \"1\" = 1\nPLUS 1:22 \"+\"\nNUMBER 1:24 \"2\" = 2\nSEMICOLON 1:25 \";\"\nRIGHT_BRACE 1:27 \"}\"\nEOF 2:1 \"\"\n",
+        "stderr": ""
+      }
+    },
+    {
+      "id": "unsupported-addition-stays-rejected",
+      "file": "edge_unsupported_addition.mini",
+      "command": "check",
+      "start": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "lex: TODO WEEK03: implement identifier scanning"
+      },
+      "solution": {
+        "exit": 1,
+        "stdout": "",
+        "stderr_contains": "parse: expected ';' after print value"
+      }
+    }
+  ]
+}
